@@ -40,6 +40,9 @@ func NewRouter() *gin.Engine {
 		r.Use(Cors())
 	}
 
+	// 设置静态文件目录，访问路径为 /static/*
+	r.Static("/static", "./html")
+
 	// 路由
 	r.GET("/ping", api.Ping)
 	route := r.Group("/stream")
