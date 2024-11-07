@@ -4,6 +4,9 @@ import (
 	"bufio"
 	"ginrtsp/service"
 
+	"log"
+	"os/exec"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -36,4 +39,20 @@ func Mpeg1Video(c *gin.Context) {
 // Wsplay 通过 websocket 播放 mpegts 数据
 func Wsplay(c *gin.Context) {
 	service.WsManager.RegisterClient(c)
+}
+
+func saveVideoFile() {
+
+	// RTSP摄像头地址
+	rtspURL := "rtsp://username:password@camera_ip:port/stream"
+
+	// FFmpeg命令，直接复制视频流并保存
+	cmd := exec.Command("ffmpeg", "-i", rtspURL, "-c", "copy", "-f", "mp4", "output.mp4")
+
+	// 执行命令
+	err := cmd.Run()
+	if err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+	log.Println("视频保存成功！")
 }
