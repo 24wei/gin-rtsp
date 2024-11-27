@@ -3,7 +3,6 @@ package server
 import (
 	"ginrtsp/api"
 	"net/http"
-	"os"
 
 	"github.com/gin-contrib/cors"
 
@@ -36,9 +35,10 @@ func NewRouter() *gin.Engine {
 	// 添加跨域请求处理
 	r.Use(cors.Default())
 
-	if os.Getenv("RTSP_CORS") == "true" {
-		r.Use(Cors())
-	}
+	// if os.Getenv("RTSP_CORS") == "true" {
+	// 	r.Use(Cors())
+	// }
+	r.Use(Cors())
 
 	// 设置静态文件目录，访问路径为 /static/*
 	r.Static("/static", "./html")
@@ -50,6 +50,7 @@ func NewRouter() *gin.Engine {
 		route.POST("/play", api.PlayRTSP)
 		route.POST("/upload/:channel", api.Mpeg1Video)
 		route.GET("/live/:channel", api.Wsplay)
+		route.GET("test", api.SaveFile)
 	}
 
 	return r

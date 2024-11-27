@@ -13,6 +13,9 @@ import (
 
 	"time"
 
+	"path"
+	"strconv"
+
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -123,4 +126,35 @@ func runFFMPEG(rtsp string, playCh string) (*exec.Cmd, io.WriteCloser, error) {
 	}
 	util.Log().Info("Translate rtsp %v to %v", rtsp, playCh)
 	return cmd, stdin, nil
+}
+func RunSaveFileFFMPEG() {
+	dir := path.Join("test", time.Now().Format("20060102"))
+	// 确保目录存在
+	err := os.MkdirAll(dir, 0755)
+	if err != nil {
+		util.Log().Info("Failed to create directory: %v", err)
+		return // 如果目录创建失败，则不继续执行
+	}
+
+	m3u8path := path.Join(dir, fmt.Sprintf("out.m3u8"))
+
+	rtsp := "rtsp://admin:9394974czw@192.168.1.60:554/stream1"
+	paramStr := "-c:v copy -c:a aac"
+	ts_duration_second := 5
+	params := []string{"-fflags", "genpts", "-rtsp_transport", "tcp", "-i", rtsp, "-hls_time", strconv.Itoa(ts_duration_second), "-hls_list_size", "0", m3u8path}
+	if paramStr != "default" {
+		paramsOfThisPath := strings.Split(paramStr, " ")
+		params = append(params[:6], append(paramsOfThisPath, params[6:]...)...)
+	}
+	// ffmpeg -i ~/Downloads/720p.mp4 -s 640x360 -g 15 -c:a aac -hls_time 5 -hls_list_size 0 record.m3u8
+	cmd := exec.Command("ffmpeg", params...)
+	f, err := os.OpenFile(path.Join(dir, fmt.Sprintf("log.txt")), os.O_RDWR|os.O_CREATE, 0755)
+	if err == nil {
+		cmd.Stdout = f
+		cmd.Stderr = f
+	}
+	err = cmd.Start()
+	if err != nil {
+		util.Log().Info("Start ffmpeg err:%v", err)
+	}
 }
