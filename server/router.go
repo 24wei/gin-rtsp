@@ -51,7 +51,7 @@ func NewRouter() *gin.Engine {
 		route.POST("/save_record", api.SaveRecord)
 		route.POST("/upload/:channel", api.Mpeg1Video)
 		route.GET("/live/:channel", api.Wsplay)
-		route.GET("test", api.SaveFile)
+		// route.GET("test", api.SaveFile)
 	}
 
 	return r

@@ -68,6 +68,6 @@ func saveVideoFile() {
 	log.Println("视频保存成功！")
 }
 
-func SaveFile(c *gin.Context) {
-	service.RunSaveFileFFMPEG()
-}
+// func SaveFile(c *gin.Context) {
+// 	service.RunSaveFileFFMPEG()
+// }
