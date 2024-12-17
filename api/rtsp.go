@@ -33,6 +33,17 @@ func SaveRecord(c *gin.Context) {
 	c.JSON(ret.Code, ret)
 }
 
+func StopSave(c *gin.Context) {
+	srv := &service.RTSPStopSrv{}
+	if err := c.ShouldBind(srv); err != nil {
+		c.JSON(400, errorRequest(err))
+		return
+	}
+
+	ret := srv.StopService()
+	c.JSON(ret.Code, ret)
+}
+
 // Mpeg1Video 接收 mpeg1vido 数据流
 func Mpeg1Video(c *gin.Context) {
 	bodyReader := bufio.NewReader(c.Request.Body)

@@ -28,6 +28,10 @@ type RTSPSaveSrv struct {
 	URL string `form:"url" json:"url" binding:"required,min=1"`
 }
 
+type RTSPStopSrv struct {
+	URL string `form:"url" json:"url" binding:"required,min=1"`
+}
+
 var (
 	// processMap FFMPEG 进程刷新通道，未在指定时间刷新的流将会被关闭
 	processMap sync.Map
@@ -96,6 +100,36 @@ func (service *RTSPSaveSrv) SaveService() *serializer.Response {
 
 	playURL := fmt.Sprintf("/stream/live/%s", processCh)
 	return serializer.BuildRTSPPlayPathResponse(playURL)
+}
+
+func (service *RTSPStopSrv) StopService() *serializer.Response {
+	simpleString := strings.Replace(service.URL, "//", "/", 1)
+	splitList := strings.Split(simpleString, "/")
+
+	if splitList[0] != "rtsp:" && len(splitList) < 2 {
+		return &serializer.Response{
+			Code: 400,
+			Msg:  "不是有效的 RTSP 地址",
+		}
+	}
+
+	// 多个客户端需要播放相同的RTSP流地址时，保证返回WebSocket地址相同
+	// 为了支持同一IP多路摄像头，使用simpleString作为hash参数，而不是splitList[1]
+	processCh := uuid.NewV3(uuid.NamespaceURL, simpleString).String()
+	triggerExternalSignal(processCh)
+	// if ch, ok := saveFileProcessMap.Load(processCh); ok {
+	// 	*ch.(*chan struct{}) <- struct{}{}
+	// } else {
+	// 	reflush := make(chan struct{})
+	// 	if cmd, stdin, err := RunSaveFileFFMPEG(service.URL); err != nil {
+	// 		return serializer.Err(400, err.Error(), err)
+	// 	} else {
+	// 		go keepSaveFileFFMPEG(cmd, stdin, &reflush, processCh)
+	// 	}
+	// }
+
+	// playURL := fmt.Sprintf("/stream/live/%s", processCh)
+	return serializer.BuildRTSPPlayPathResponse(processCh)
 }
 
 func keepFFMPEG(cmd *exec.Cmd, stdin io.WriteCloser, ch *chan struct{}, playCh string) {
@@ -210,6 +244,20 @@ func externalSignal(playCh string) <-chan struct{} {
 	signalCh := make(chan struct{})
 	signalMap.Store(playCh, signalCh)
 	return signalCh
+}
+
+func triggerExternalSignal(playCh string) {
+	if val, ok := signalMap.Load(playCh); ok {
+		signalCh := val.(chan struct{})
+		select {
+		case signalCh <- struct{}{}:
+			fmt.Printf("Signal sent to %s\n", playCh)
+		default:
+			fmt.Printf("Channel %s is not ready to receive signals\n", playCh)
+		}
+	} else {
+		fmt.Printf("No signal channel found for %s\n", playCh)
+	}
 }
 
 func RunSaveFileFFMPEG(rtsp string) (*exec.Cmd, io.WriteCloser, error) {
