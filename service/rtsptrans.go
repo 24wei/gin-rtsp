@@ -307,4 +307,64 @@ func RunSaveFileFFMPEG(rtsp string) (*exec.Cmd, io.WriteCloser, error) {
 	}
 
 	return cmd, stdinPipe, nil
+	// // 设置流地址和输出路径
+	// streamURL := "rtsp://stream1"
+	// outputDir := "G:/tplink_data"
+
+	// // 获取当前时间
+	// year, month, day, hour, minute := getCurrentTime()
+
+	// // 创建目标目录路径
+	// dir1 := fmt.Sprintf("%s/%s-%s/%s/%s-%s", outputDir, year, month, day, hour, minute)
+
+	// // 创建目录
+	// err = createDirectory(dir1)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return nil, nil, nil
+	// }
+
+	// // 构造输出文件的路径
+	// outputFile := fmt.Sprintf("%s/%%Y-%%m/%%d/%%H:%%M-%%H:%%M.mkv", dir)
+
+	// // 构建 FFmpeg 命令
+	// cmd1 := exec.Command("ffmpeg",
+	// 	"-use_wallclock_as_timestamps", "1",
+	// 	"-rtsp_transport", "tcp",
+	// 	"-i", streamURL,
+	// 	"-vcodec", "copy", "-acodec", "copy", "-f", "segment",
+	// 	"-reset_timestamps", "1", "-segment_atclocktime", "1",
+	// 	"-segment_time", "60", "-strftime", "1", outputFile)
+
+	// // 打印并执行命令
+	// cmdStr := strings.Join(cmd1.Args, " ")
+	// fmt.Printf("正在执行命令: %s\n", cmdStr)
+	// err = cmd1.Run()
+	// if err != nil {
+	// 	fmt.Println("执行 FFmpeg 时出错:", err)
+	// 	return nil, nil, nil
+	// }
+
+	// fmt.Println("流录制完成并保存到:", dir)
+}
+
+// 创建目录
+func createDirectory(path string) error {
+	// 使用 os.MkdirAll 确保目录存在，如果没有则创建
+	err := os.MkdirAll(path, os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("无法创建目录: %v", err)
+	}
+	return nil
+}
+
+// 获取当前时间，格式化为年份、月份、日期、小时、分钟
+func getCurrentTime() (string, string, string, string, string) {
+	now := time.Now()
+	year := now.Format("2006")
+	month := now.Format("01")
+	day := now.Format("02")
+	hour := now.Format("15")
+	minute := now.Format("04")
+	return year, month, day, hour, minute
 }
