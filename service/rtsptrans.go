@@ -13,9 +13,6 @@ import (
 
 	"time"
 
-	"path"
-	"strconv"
-
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -261,91 +258,100 @@ func triggerExternalSignal(playCh string) {
 }
 
 func RunSaveFileFFMPEG(rtsp string) (*exec.Cmd, io.WriteCloser, error) {
-	dir := path.Join("test", time.Now().Format("20060102"))
-	// 确保目录存在
-	err := os.MkdirAll(dir, 0755)
+	// dir := path.Join("test", time.Now().Format("20060102"))
+	// // 确保目录存在
+	// err := os.MkdirAll(dir, 0755)
+	// if err != nil {
+	// 	util.Log().Info("Failed to create directory: %v", err)
+	// 	return nil, nil, fmt.Errorf("failed to create directory: %w", err) // 如果目录创建失败，则不继续执行
+	// }
+
+	// m3u8path := path.Join(dir, fmt.Sprintf("out.m3u8"))
+
+	// // rtsp := "rtsp://admin:9394974czw@192.168.1.60:554/stream1"
+	// paramStr := "-c:v copy -c:a aac"
+	// ts_duration_second := 5
+	// params := []string{"-fflags", "genpts", "-rtsp_transport", "tcp", "-i", rtsp, "-hls_time", strconv.Itoa(ts_duration_second), "-hls_list_size", "0", m3u8path}
+	// if paramStr != "default" {
+	// 	paramsOfThisPath := strings.Split(paramStr, " ")
+	// 	params = append(params[:6], append(paramsOfThisPath, params[6:]...)...)
+	// }
+	// // ffmpeg -i ~/Downloads/720p.mp4 -s 640x360 -g 15 -c:a aac -hls_time 5 -hls_list_size 0 record.m3u8
+	// cmd := exec.Command("ffmpeg", params...)
+	// f, err := os.OpenFile(path.Join(dir, fmt.Sprintf("log.txt")), os.O_RDWR|os.O_CREATE, 0755)
+	// if err != nil {
+	// 	util.Log().Info("Failed to open log file: %v", err)
+	// 	return nil, nil, fmt.Errorf("failed to open log file: %w", err)
+	// }
+	// // 设置日志输出
+	// cmd.Stdout = f
+	// cmd.Stderr = f
+
+	// // 创建管道以写入 stdin
+	// stdinPipe, err := cmd.StdinPipe()
+	// if err != nil {
+	// 	util.Log().Info("Failed to create stdin pipe: %v", err)
+	// 	f.Close() // 关闭日志文件
+	// 	return nil, nil, fmt.Errorf("failed to create stdin pipe: %w", err)
+	// }
+
+	// err = cmd.Start()
+	// if err != nil {
+	// 	util.Log().Info("Start ffmpeg err:%v", err)
+	// 	f.Close()         // 如果启动失败，关闭日志文件
+	// 	stdinPipe.Close() // 如果启动失败，关闭管道
+	// 	return nil, nil, fmt.Errorf("failed to start ffmpeg: %w", err)
+	// }
+
+	// return cmd, stdinPipe, nil
+	// 设置流地址和输出路径
+	streamURL := "rtsp://stream1"
+	outputDir := "G:/tplink_data"
+
+	// 获取当前时间
+	year, month, day, hour, minute := getCurrentTime()
+
+	// 创建目标目录路径
+	dir := fmt.Sprintf("%s/%s-%s/%s/%s-%s", outputDir, year, month, day, hour, minute)
+
+	// 创建目录
+	err := createDirectory(dir)
 	if err != nil {
-		util.Log().Info("Failed to create directory: %v", err)
-		return nil, nil, fmt.Errorf("failed to create directory: %w", err) // 如果目录创建失败，则不继续执行
+		fmt.Println(err)
+		return nil, nil, err
 	}
 
-	m3u8path := path.Join(dir, fmt.Sprintf("out.m3u8"))
+	// 构造输出文件的路径
+	outputFile := fmt.Sprintf("%s/%%Y-%%m/%%d/%%H:%%M-%%H:%%M.mkv", dir)
 
-	// rtsp := "rtsp://admin:9394974czw@192.168.1.60:554/stream1"
-	paramStr := "-c:v copy -c:a aac"
-	ts_duration_second := 5
-	params := []string{"-fflags", "genpts", "-rtsp_transport", "tcp", "-i", rtsp, "-hls_time", strconv.Itoa(ts_duration_second), "-hls_list_size", "0", m3u8path}
-	if paramStr != "default" {
-		paramsOfThisPath := strings.Split(paramStr, " ")
-		params = append(params[:6], append(paramsOfThisPath, params[6:]...)...)
-	}
-	// ffmpeg -i ~/Downloads/720p.mp4 -s 640x360 -g 15 -c:a aac -hls_time 5 -hls_list_size 0 record.m3u8
-	cmd := exec.Command("ffmpeg", params...)
-	f, err := os.OpenFile(path.Join(dir, fmt.Sprintf("log.txt")), os.O_RDWR|os.O_CREATE, 0755)
-	if err != nil {
-		util.Log().Info("Failed to open log file: %v", err)
-		return nil, nil, fmt.Errorf("failed to open log file: %w", err)
-	}
-	// 设置日志输出
-	cmd.Stdout = f
-	cmd.Stderr = f
+	// 构建 FFmpeg 命令
+	cmd := exec.Command("ffmpeg",
+		"-use_wallclock_as_timestamps", "1",
+		"-rtsp_transport", "tcp",
+		"-i", streamURL,
+		"-vcodec", "copy", "-acodec", "copy", "-f", "segment",
+		"-reset_timestamps", "1", "-segment_atclocktime", "1",
+		"-segment_time", "60", "-strftime", "1", outputFile)
 
 	// 创建管道以写入 stdin
 	stdinPipe, err := cmd.StdinPipe()
 	if err != nil {
 		util.Log().Info("Failed to create stdin pipe: %v", err)
-		f.Close() // 关闭日志文件
 		return nil, nil, fmt.Errorf("failed to create stdin pipe: %w", err)
 	}
 
-	err = cmd.Start()
+	// 打印并执行命令
+	cmdStr := strings.Join(cmd.Args, " ")
+	fmt.Printf("正在执行命令: %s\n", cmdStr)
+	err = cmd.Run()
 	if err != nil {
-		util.Log().Info("Start ffmpeg err:%v", err)
-		f.Close()         // 如果启动失败，关闭日志文件
-		stdinPipe.Close() // 如果启动失败，关闭管道
-		return nil, nil, fmt.Errorf("failed to start ffmpeg: %w", err)
+		fmt.Println("执行 FFmpeg 时出错:", err)
+		return nil, nil, err
 	}
 
-	return cmd, stdinPipe, nil
-	// // 设置流地址和输出路径
-	// streamURL := "rtsp://stream1"
-	// outputDir := "G:/tplink_data"
+	fmt.Println("流录制完成并保存到:", dir)
 
-	// // 获取当前时间
-	// year, month, day, hour, minute := getCurrentTime()
-
-	// // 创建目标目录路径
-	// dir1 := fmt.Sprintf("%s/%s-%s/%s/%s-%s", outputDir, year, month, day, hour, minute)
-
-	// // 创建目录
-	// err = createDirectory(dir1)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	return nil, nil, nil
-	// }
-
-	// // 构造输出文件的路径
-	// outputFile := fmt.Sprintf("%s/%%Y-%%m/%%d/%%H:%%M-%%H:%%M.mkv", dir)
-
-	// // 构建 FFmpeg 命令
-	// cmd1 := exec.Command("ffmpeg",
-	// 	"-use_wallclock_as_timestamps", "1",
-	// 	"-rtsp_transport", "tcp",
-	// 	"-i", streamURL,
-	// 	"-vcodec", "copy", "-acodec", "copy", "-f", "segment",
-	// 	"-reset_timestamps", "1", "-segment_atclocktime", "1",
-	// 	"-segment_time", "60", "-strftime", "1", outputFile)
-
-	// // 打印并执行命令
-	// cmdStr := strings.Join(cmd1.Args, " ")
-	// fmt.Printf("正在执行命令: %s\n", cmdStr)
-	// err = cmd1.Run()
-	// if err != nil {
-	// 	fmt.Println("执行 FFmpeg 时出错:", err)
-	// 	return nil, nil, nil
-	// }
-
-	// fmt.Println("流录制完成并保存到:", dir)
+	return cmd, stdinPipe, err
 }
 
 // 创建目录
